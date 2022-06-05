@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/x-color/docdb/server"
+	"github.com/x-color/docdb-in-go/server"
 )
 
 func main() {
