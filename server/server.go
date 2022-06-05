@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,13 +11,12 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/patrickmn/go-cache"
+	"github.com/x-color/docdb-in-go/docdb"
 )
 
 type Server struct {
-	db     *cache.Cache
+	docdb  *docdb.DocDB
 	server *http.Server
 	wait   time.Duration
 }
@@ -33,14 +33,11 @@ func (s Server) AddDocumentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := uuid.New().String()
-	b, err := json.Marshal(doc)
+	id, err := s.docdb.Add(doc)
 	if err != nil {
 		errResponse(w, http.StatusInternalServerError, nil)
 		return
 	}
-
-	s.db.Set(id, b, 0)
 
 	response(w, http.StatusCreated, map[string]any{
 		"id": id,
@@ -54,19 +51,15 @@ func (s Server) SearchDocumentsHandler(w http.ResponseWriter, r *http.Request) {
 func (s Server) GetDocumentHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
-	item, ok := s.db.Get(id)
-	if !ok {
-		errResponse(w, http.StatusNotFound, nil)
-		return
-	}
-	b, ok := item.([]byte)
-	if !ok {
-		errResponse(w, http.StatusInternalServerError, nil)
-		return
-	}
-	doc := make(map[string]any)
-	if err := json.Unmarshal(b, &doc); err != nil {
-		errResponse(w, http.StatusInternalServerError, nil)
+
+	doc, err := s.docdb.Get(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, docdb.ErrNotFound):
+			errResponse(w, http.StatusNotFound, nil)
+		default:
+			errResponse(w, http.StatusInternalServerError, nil)
+		}
 		return
 	}
 
@@ -98,7 +91,7 @@ func (s Server) waitSignal(sigs ...os.Signal) {
 
 func NewServer(addr string, port int) Server {
 	s := Server{
-		db: cache.New(30*time.Minute, 10*time.Minute),
+		docdb: docdb.NewDocDB(),
 		server: &http.Server{
 			Addr:         fmt.Sprintf("%s:%d", addr, port),
 			WriteTimeout: 15 * time.Second,
