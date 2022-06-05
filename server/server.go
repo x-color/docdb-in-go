@@ -52,7 +52,25 @@ func (s Server) SearchDocumentsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) GetDocumentHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotFound)
+	vars := mux.Vars(r)
+	id := vars["id"]
+	item, ok := s.db.Get(id)
+	if !ok {
+		errResponse(w, http.StatusNotFound, nil)
+		return
+	}
+	b, ok := item.([]byte)
+	if !ok {
+		errResponse(w, http.StatusInternalServerError, nil)
+		return
+	}
+	doc := make(map[string]any)
+	if err := json.Unmarshal(b, &doc); err != nil {
+		errResponse(w, http.StatusInternalServerError, nil)
+		return
+	}
+
+	response(w, http.StatusOK, doc)
 }
 
 func (s Server) Start() error {
