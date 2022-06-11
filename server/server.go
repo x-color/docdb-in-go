@@ -13,6 +13,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/x-color/docdb-in-go/docdb"
+	"github.com/x-color/docdb-in-go/query"
 )
 
 type Server struct {
@@ -45,6 +46,27 @@ func (s Server) AddDocumentHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s Server) SearchDocumentsHandler(w http.ResponseWriter, r *http.Request) {
+	q, err := query.ParseQuery(r.URL.Query().Get("q"))
+	if err != nil {
+		errResponse(w, http.StatusBadRequest, err)
+		return
+	}
+
+	docs, err := s.docdb.GetAll()
+	if err != nil {
+		errResponse(w, http.StatusInternalServerError, nil)
+		return
+	}
+	for id, doc := range docs {
+		if q.Match(doc) {
+			response(w, http.StatusFound, map[string]any{
+				"id":       id,
+				"document": doc,
+			})
+			return
+		}
+	}
+
 	w.WriteHeader(http.StatusNotFound)
 }
 
