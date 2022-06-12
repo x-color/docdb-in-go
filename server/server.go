@@ -59,7 +59,7 @@ func (s Server) SearchDocumentsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	for id, doc := range docs {
 		if q.Match(doc) {
-			response(w, http.StatusFound, map[string]any{
+			response(w, http.StatusOK, map[string]any{
 				"id":       id,
 				"document": doc,
 			})
