@@ -16,6 +16,8 @@ import (
 	"github.com/x-color/docdb-in-go/query"
 )
 
+type middleware func(http.HandlerFunc) http.HandlerFunc
+
 type Server struct {
 	docdb  *docdb.DocDB
 	server *http.Server
@@ -48,6 +50,7 @@ func (s Server) AddDocumentHandler(w http.ResponseWriter, r *http.Request) {
 func (s Server) SearchDocumentsHandler(w http.ResponseWriter, r *http.Request) {
 	q, err := query.ParseQuery(r.URL.Query().Get("q"))
 	if err != nil {
+		log.Printf("(id=%v) Not found document: %v", r.Context().Value(ctxKeyID), err)
 		errResponse(w, http.StatusBadRequest, err)
 		return
 	}
@@ -122,11 +125,14 @@ func NewServer(addr string, port int) Server {
 		},
 		wait: 15 * time.Second,
 	}
+
+	with := withMiddleware(withUID, withLogging)
+
 	r := mux.NewRouter()
-	r.HandleFunc("/docs", s.AddDocumentHandler).Methods("POST")
-	r.HandleFunc("/docs", s.SearchDocumentsHandler).Methods("GET")
-	r.HandleFunc("/docs/{id}", s.GetDocumentHandler).Methods("GET")
-	r.HandleFunc("/", s.defaultHandler)
+	r.HandleFunc("/docs", with(s.AddDocumentHandler)).Methods("POST")
+	r.HandleFunc("/docs", with(s.SearchDocumentsHandler)).Methods("GET")
+	r.HandleFunc("/docs/{id}", with(s.GetDocumentHandler)).Methods("GET")
+	r.HandleFunc("/", with(s.defaultHandler))
 	s.server.Handler = r
 
 	return s
