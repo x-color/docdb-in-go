@@ -55,22 +55,20 @@ func (s Server) SearchDocumentsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	docs, err := s.docdb.GetAll()
+	docs, err := s.docdb.Search(q)
 	if err != nil {
 		errResponse(w, http.StatusInternalServerError, nil)
 		return
 	}
-	for id, doc := range docs {
-		if q.Match(doc) {
-			response(w, http.StatusOK, map[string]any{
-				"id":       id,
-				"document": doc,
-			})
-			return
-		}
+	if len(docs) == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		return
 	}
 
-	w.WriteHeader(http.StatusNotFound)
+	response(w, http.StatusOK, map[string]any{
+		"documents": docs,
+		"count":     len(docs),
+	})
 }
 
 func (s Server) GetDocumentHandler(w http.ResponseWriter, r *http.Request) {

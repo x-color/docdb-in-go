@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/patrickmn/go-cache"
+	"github.com/x-color/docdb-in-go/query"
 )
 
 var (
@@ -72,10 +73,9 @@ func (d DocDB) Get(id string) (map[string]any, error) {
 	return doc, nil
 }
 
-func (d DocDB) GetAll() (map[string]map[string]any, error) {
-	docs := make(map[string]map[string]any)
-	items := d.db.Items()
-	for id, item := range items {
+func (d DocDB) Search(q query.Queries) ([]map[string]any, error) {
+	match := make([]map[string]any, 0)
+	for id, item := range d.db.Items() {
 		b, ok := item.Object.([]byte)
 		if !ok {
 			return nil, wrapError(ErrFatal, fmt.Sprintf("unexpected data in %s", id))
@@ -84,9 +84,14 @@ func (d DocDB) GetAll() (map[string]map[string]any, error) {
 		if err := json.Unmarshal(b, &doc); err != nil {
 			return nil, wrapError(ErrFatal, fmt.Sprintf("failed to convert data to document: %s", err))
 		}
-		docs[id] = doc
+		if q.Match(doc) {
+			match = append(match, map[string]any{
+				"id":       id,
+				"document": doc,
+			})
+		}
 	}
-	return docs, nil
+	return match, nil
 }
 
 func (d DocDB) index(id string, doc map[string]any) {
