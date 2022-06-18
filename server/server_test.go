@@ -14,20 +14,20 @@ import (
 
 func TestServer_AddDocumentHandler(t *testing.T) {
 	tests := []struct {
-		name    string
-		server  Server
-		reqBody string
-		code    int
-		doc     map[string]any
+		name     string
+		server   Server
+		reqBody  string
+		wantCode int
+		wantDoc  map[string]any
 	}{
 		{
 			name: "Create document",
 			server: Server{
 				docdb: docdb.NewDocDB(),
 			},
-			reqBody: `{"greeting":"hello"}`,
-			code:    http.StatusCreated,
-			doc: map[string]any{
+			reqBody:  `{"greeting":"hello"}`,
+			wantCode: http.StatusCreated,
+			wantDoc: map[string]any{
 				"greeting": "hello",
 			},
 		},
@@ -36,8 +36,8 @@ func TestServer_AddDocumentHandler(t *testing.T) {
 			server: Server{
 				docdb: docdb.NewDocDB(),
 			},
-			reqBody: `{"greeting":"hello"`,
-			code:    http.StatusBadRequest,
+			reqBody:  `{"greeting":"hello"`,
+			wantCode: http.StatusBadRequest,
 		},
 	}
 	for _, tt := range tests {
@@ -52,7 +52,7 @@ func TestServer_AddDocumentHandler(t *testing.T) {
 			router.HandleFunc("/docs", tt.server.AddDocumentHandler)
 			router.ServeHTTP(rr, req)
 
-			if rr.Code != tt.code {
+			if rr.Code != tt.wantCode {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, tt.code)
 			}
 
@@ -71,7 +71,7 @@ func TestServer_AddDocumentHandler(t *testing.T) {
 				t.Errorf("can not get document: %v", err)
 			}
 
-			if diff := cmp.Diff(tt.doc, v); diff != "" {
+			if diff := cmp.Diff(tt.wantDoc, v); diff != "" {
 				t.Errorf("document mismatch (-want +got):\n%s", diff)
 			}
 		})
@@ -83,16 +83,16 @@ func TestServer_GetDocumentHandler(t *testing.T) {
 		name       string
 		server     Server
 		overrideID string
-		code       int
-		doc        map[string]any
+		wantCode   int
+		wantDoc    map[string]any
 	}{
 		{
 			name: "Get document",
 			server: Server{
 				docdb: docdb.NewDocDB(),
 			},
-			code: http.StatusOK,
-			doc: map[string]any{
+			wantCode: http.StatusOK,
+			wantDoc: map[string]any{
 				"greeting": "hello",
 			},
 		},
@@ -102,7 +102,7 @@ func TestServer_GetDocumentHandler(t *testing.T) {
 				docdb: docdb.NewDocDB(),
 			},
 			overrideID: "not-found",
-			code:       http.StatusNotFound,
+			wantCode:   http.StatusNotFound,
 		},
 	}
 	for _, tt := range tests {
@@ -128,7 +128,7 @@ func TestServer_GetDocumentHandler(t *testing.T) {
 			router.HandleFunc("/docs/{id}", tt.server.GetDocumentHandler)
 			router.ServeHTTP(rr, req)
 
-			if rr.Code != tt.code {
+			if rr.Code != tt.wantCode {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, tt.code)
 			}
 
@@ -141,7 +141,7 @@ func TestServer_GetDocumentHandler(t *testing.T) {
 				t.Errorf("handler returned invalid body: got %v", rr.Body.String())
 			}
 
-			if diff := cmp.Diff(tt.doc, res); diff != "" {
+			if diff := cmp.Diff(tt.wantDoc, res); diff != "" {
 				t.Errorf("document mismatch (-want +got):\n%s", diff)
 			}
 		})
@@ -150,20 +150,20 @@ func TestServer_GetDocumentHandler(t *testing.T) {
 
 func TestServer_SearchDocumentHandler(t *testing.T) {
 	tests := []struct {
-		name   string
-		server Server
-		q      string
-		code   int
-		doc    map[string]any
+		name     string
+		server   Server
+		q        string
+		wantCode int
+		wantDoc  map[string]any
 	}{
 		{
 			name: "Search document",
 			server: Server{
 				docdb: docdb.NewDocDB(),
 			},
-			q:    "greeting:hello",
-			code: http.StatusOK,
-			doc: map[string]any{
+			q:        "greeting:hello",
+			wantCode: http.StatusOK,
+			wantDoc: map[string]any{
 				"document": map[string]any{
 					"greeting": "hello",
 				},
@@ -174,9 +174,9 @@ func TestServer_SearchDocumentHandler(t *testing.T) {
 			server: Server{
 				docdb: docdb.NewDocDB(),
 			},
-			q:    "a.b.:1",
-			code: http.StatusNotFound,
-			doc:  make(map[string]any),
+			q:        "a.b.:1",
+			wantCode: http.StatusNotFound,
+			wantDoc:  make(map[string]any),
 		},
 	}
 	for _, tt := range tests {
@@ -188,7 +188,7 @@ func TestServer_SearchDocumentHandler(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to add data to DB for preparing test: %v", err)
 			}
-			tt.doc["id"] = id
+			tt.wantDoc["id"] = id
 
 			req, err := http.NewRequest("GET", "/docs?q="+tt.q, nil)
 			if err != nil {
@@ -200,7 +200,7 @@ func TestServer_SearchDocumentHandler(t *testing.T) {
 			router.HandleFunc("/docs", tt.server.SearchDocumentsHandler)
 			router.ServeHTTP(rr, req)
 
-			if rr.Code != tt.code {
+			if rr.Code != tt.wantCode {
 				t.Errorf("handler returned wrong status code: got %v want %v", rr.Code, tt.code)
 			}
 
@@ -213,7 +213,7 @@ func TestServer_SearchDocumentHandler(t *testing.T) {
 				t.Errorf("handler returned invalid body: got %v", rr.Body.String())
 			}
 
-			if diff := cmp.Diff(tt.doc, res); diff != "" {
+			if diff := cmp.Diff(tt.wantDoc, res); diff != "" {
 				t.Errorf("document mismatch (-want +got):\n%s", diff)
 			}
 		})
