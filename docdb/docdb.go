@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -37,7 +38,8 @@ func wrapError(typ error, msg string) error {
 }
 
 type DocDB struct {
-	db *cache.Cache
+	db      *cache.Cache
+	indexDb *cache.Cache
 }
 
 func (d DocDB) Add(doc map[string]any) (string, error) {
@@ -48,6 +50,8 @@ func (d DocDB) Add(doc map[string]any) (string, error) {
 	}
 
 	d.db.Set(id, b, 0)
+	d.index(id, doc)
+
 	return id, nil
 }
 
@@ -85,8 +89,48 @@ func (d DocDB) GetAll() (map[string]map[string]any, error) {
 	return docs, nil
 }
 
+func (d DocDB) index(id string, doc map[string]any) {
+	pvs := getPathValues(doc, "")
+	for _, pv := range pvs {
+		v, ok := d.indexDb.Get(pv)
+		if !ok {
+			continue
+		}
+		ids, ok := v.(string)
+		if !ok {
+			continue
+		}
+
+		if !strings.Contains(id, ids) {
+			ids = fmt.Sprintf("%s,%s", ids, id)
+			d.indexDb.Set(pv, []byte(ids), 0)
+		}
+	}
+}
+
+func getPathValues(obj map[string]any, prefix string) []string {
+	var pvs []string
+	for k, v := range obj {
+		if prefix != "" {
+			k = prefix + "." + k
+		}
+		switch t := v.(type) {
+		case map[string]any:
+			pvs = append(pvs, getPathValues(t, k)...)
+			continue
+		case []any:
+			continue
+		}
+
+		pvs = append(pvs, fmt.Sprintf("%s=%v", k, v))
+	}
+
+	return pvs
+}
+
 func NewDocDB() *DocDB {
 	return &DocDB{
-		db: cache.New(30*time.Minute, 10*time.Minute),
+		db:      cache.New(30*time.Minute, 10*time.Minute),
+		indexDb: cache.New(30*time.Minute, 10*time.Minute),
 	}
 }
