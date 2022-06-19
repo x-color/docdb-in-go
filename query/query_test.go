@@ -25,7 +25,7 @@ func TestParseQuery(t *testing.T) {
 				{
 					Keys:  []string{"a", "b"},
 					Value: "1",
-					Op:    opeEq,
+					Op:    OpeEq,
 				},
 			},
 			wantErr: false,
@@ -39,7 +39,7 @@ func TestParseQuery(t *testing.T) {
 				{
 					Keys:  []string{"a"},
 					Value: "10",
-					Op:    opeLt,
+					Op:    OpeLt,
 				},
 			},
 			wantErr: false,
@@ -53,7 +53,7 @@ func TestParseQuery(t *testing.T) {
 				{
 					Keys:  []string{"a"},
 					Value: "10",
-					Op:    opeGt,
+					Op:    OpeGt,
 				},
 			},
 			wantErr: false,
@@ -67,12 +67,12 @@ func TestParseQuery(t *testing.T) {
 				{
 					Keys:  []string{"a", "b"},
 					Value: "10",
-					Op:    opeGt,
+					Op:    OpeGt,
 				},
 				{
 					Keys:  []string{"a", "c"},
 					Value: "hello",
-					Op:    opeEq,
+					Op:    OpeEq,
 				},
 			},
 			wantErr: false,
@@ -86,7 +86,7 @@ func TestParseQuery(t *testing.T) {
 				{
 					Keys:  []string{" a "},
 					Value: " hello ",
-					Op:    opeEq,
+					Op:    OpeEq,
 				},
 			},
 			wantErr: false,
@@ -100,7 +100,7 @@ func TestParseQuery(t *testing.T) {
 				{
 					Keys:  []string{"a"},
 					Value: "hello",
-					Op:    opeEq,
+					Op:    OpeEq,
 				},
 			},
 			wantErr: false,
@@ -168,7 +168,7 @@ func TestQueries_Match(t *testing.T) {
 				{
 					Keys:  []string{"a", "b"},
 					Value: "hello",
-					Op:    opeEq,
+					Op:    OpeEq,
 				},
 			},
 			args: args{
@@ -186,7 +186,7 @@ func TestQueries_Match(t *testing.T) {
 				{
 					Keys:  []string{"a", "b"},
 					Value: "hello",
-					Op:    opeEq,
+					Op:    OpeEq,
 				},
 			},
 			args: args{
@@ -204,7 +204,7 @@ func TestQueries_Match(t *testing.T) {
 				{
 					Keys:  []string{"a", "b"},
 					Value: "hello",
-					Op:    opeEq,
+					Op:    OpeEq,
 				},
 			},
 			args: args{
@@ -220,7 +220,7 @@ func TestQueries_Match(t *testing.T) {
 				{
 					Keys:  []string{"a", "b"},
 					Value: "1",
-					Op:    opeGt,
+					Op:    OpeGt,
 				},
 			},
 			args: args{
@@ -238,7 +238,7 @@ func TestQueries_Match(t *testing.T) {
 				{
 					Keys:  []string{"a", "b"},
 					Value: "1",
-					Op:    opeGt,
+					Op:    OpeGt,
 				},
 			},
 			args: args{
@@ -256,7 +256,7 @@ func TestQueries_Match(t *testing.T) {
 				{
 					Keys:  []string{"a", "b"},
 					Value: "1",
-					Op:    opeLt,
+					Op:    OpeLt,
 				},
 			},
 			args: args{
@@ -274,7 +274,7 @@ func TestQueries_Match(t *testing.T) {
 				{
 					Keys:  []string{"a", "b"},
 					Value: "1",
-					Op:    opeLt,
+					Op:    OpeLt,
 				},
 			},
 			args: args{
@@ -292,12 +292,12 @@ func TestQueries_Match(t *testing.T) {
 				{
 					Keys:  []string{"a", "b"},
 					Value: "1",
-					Op:    opeEq,
+					Op:    OpeEq,
 				},
 				{
 					Keys:  []string{"b", "c"},
 					Value: "hello",
-					Op:    opeEq,
+					Op:    OpeEq,
 				},
 			},
 			args: args{
@@ -318,12 +318,12 @@ func TestQueries_Match(t *testing.T) {
 				{
 					Keys:  []string{"a", "b"},
 					Value: "1",
-					Op:    opeEq,
+					Op:    OpeEq,
 				},
 				{
 					Keys:  []string{"b", "c"},
 					Value: "hello",
-					Op:    opeEq,
+					Op:    OpeEq,
 				},
 			},
 			args: args{

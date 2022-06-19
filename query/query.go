@@ -101,14 +101,14 @@ func (l *lexer) operator() (token, error) {
 	switch l.peekChar() {
 	case '>':
 		l.readChar()
-		return newToken(kindOp, ">"), nil
+		return newToken(kindOp, OpeGt.String()), nil
 	case '<':
 		l.readChar()
-		return newToken(kindOp, "<"), nil
+		return newToken(kindOp, OpeLt.String()), nil
 	case 0:
 		return token{}, fmt.Errorf("unexpected character at %d", l.index)
 	default:
-		return newToken(kindOp, "="), nil
+		return newToken(kindOp, OpeEq.String()), nil
 	}
 }
 
@@ -164,10 +164,14 @@ func newLexer(input string) lexer {
 
 type operation string
 
+func (o operation) String() string {
+	return string(o)
+}
+
 const (
-	opeEq operation = "="
-	opeLt operation = "<"
-	opeGt operation = ">"
+	OpeEq operation = "="
+	OpeLt operation = "<"
+	OpeGt operation = ">"
 )
 
 type query struct {
@@ -230,7 +234,7 @@ func (qs Queries) Match(doc map[string]any) bool {
 			return false
 		}
 
-		if q.Op == opeEq {
+		if q.Op == OpeEq {
 			if q.Value == fmt.Sprintf("%v", v) {
 				continue
 			}
@@ -275,7 +279,7 @@ func (qs Queries) Match(doc map[string]any) bool {
 			return false
 		}
 
-		if q.Op == ">" {
+		if q.Op == OpeGt {
 			if l <= r {
 				return false
 			}
