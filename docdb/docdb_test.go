@@ -1,10 +1,10 @@
 package docdb
 
 import (
-	"sort"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func Test_getPathValues(t *testing.T) {
@@ -39,13 +39,11 @@ func Test_getPathValues(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			trans := cmp.Transformer("Sort", func(in []int) []int {
-				out := append([]int(nil), in...)
-				sort.Ints(out)
-				return out
+			sortOpt := cmpopts.SortSlices(func(x, y string) bool {
+				return x < y
 			})
 			got := getPathValues(tt.args.obj, tt.args.prefix)
-			if diff := cmp.Diff(tt.want, got, trans); diff != "" {
+			if diff := cmp.Diff(tt.want, got, sortOpt); diff != "" {
 				t.Errorf("getPathValues() mismatch (-want +got):\n%s", diff)
 			}
 		})
