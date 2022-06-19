@@ -286,6 +286,8 @@ func TestServer_SearchDocumentHandler(t *testing.T) {
 					return in
 				}
 				sort.Slice(docs, func(i, j int) bool {
+					docs[i].(map[string]any)["id"] = ""
+					docs[j].(map[string]any)["id"] = ""
 					hi := fmt.Sprintf("%s", sha256.Sum256([]byte(fmt.Sprintf("%v", docs[i]))))
 					hj := fmt.Sprintf("%s", sha256.Sum256([]byte(fmt.Sprintf("%v", docs[j]))))
 					return hi < hj
