@@ -180,6 +180,81 @@ type query struct {
 	Op    operation
 }
 
+func (q query) get(doc map[string]any) any {
+	for i, k := range q.Keys {
+		v, ok := doc[k]
+		if !ok {
+			return nil
+		}
+		if i == len(q.Keys)-1 {
+			break
+		}
+		doc, ok = v.(map[string]any)
+		if !ok {
+			return nil
+		}
+	}
+
+	v := doc[q.Keys[len(q.Keys)-1]]
+	if _, ok := v.(map[string]any); ok {
+		return nil
+	}
+
+	return v
+}
+
+func (q query) Match(doc map[string]any) bool {
+	v := q.get(doc)
+	if v == nil {
+		return false
+	}
+
+	if q.Op == OpeEq && q.Value == fmt.Sprintf("%v", v) {
+		return true
+	}
+
+	r, err := strconv.ParseFloat(q.Value, 64)
+	if err != nil {
+		return false
+	}
+	var l float64
+	switch t := v.(type) {
+	case float64:
+		l = t
+	case float32:
+		l = float64(t)
+	case uint:
+		l = float64(t)
+	case uint8:
+		l = float64(t)
+	case uint16:
+		l = float64(t)
+	case uint32:
+		l = float64(t)
+	case uint64:
+		l = float64(t)
+	case int:
+		l = float64(t)
+	case int8:
+		l = float64(t)
+	case int16:
+		l = float64(t)
+	case int32:
+		l = float64(t)
+	case int64:
+		l = float64(t)
+	case string:
+		l, err = strconv.ParseFloat(t, 64)
+		if err != nil {
+			return false
+		}
+	default:
+		return false
+	}
+
+	return (q.Op == OpeGt && l > r) || (q.Op == OpeLt && l < r)
+}
+
 type Queries []query
 
 func ParseQuery(rq string) (Queries, error) {
@@ -229,89 +304,9 @@ func (qs Queries) validate() error {
 
 func (qs Queries) Match(doc map[string]any) bool {
 	for _, q := range qs {
-		v := qs.get(doc, q.Keys)
-		if v == nil {
-			return false
-		}
-
-		if q.Op == OpeEq {
-			if q.Value == fmt.Sprintf("%v", v) {
-				continue
-			}
-		}
-
-		r, err := strconv.ParseFloat(q.Value, 64)
-		if err != nil {
-			return false
-		}
-		var l float64
-		switch t := v.(type) {
-		case float64:
-			l = t
-		case float32:
-			l = float64(t)
-		case uint:
-			l = float64(t)
-		case uint8:
-			l = float64(t)
-		case uint16:
-			l = float64(t)
-		case uint32:
-			l = float64(t)
-		case uint64:
-			l = float64(t)
-		case int:
-			l = float64(t)
-		case int8:
-			l = float64(t)
-		case int16:
-			l = float64(t)
-		case int32:
-			l = float64(t)
-		case int64:
-			l = float64(t)
-		case string:
-			l, err = strconv.ParseFloat(t, 64)
-			if err != nil {
-				return false
-			}
-		default:
-			return false
-		}
-
-		if q.Op == OpeGt {
-			if l <= r {
-				return false
-			}
-			continue
-		}
-
-		if l >= r {
+		if !q.Match(doc) {
 			return false
 		}
 	}
 	return true
-}
-
-func (qs Queries) get(doc map[string]any, path []string) any {
-	for i, k := range path {
-		v, ok := doc[k]
-		if !ok {
-			return nil
-		}
-		if i == len(path)-1 {
-			break
-		}
-		doc, ok = v.(map[string]any)
-		if !ok {
-			return nil
-		}
-	}
-
-	v := doc[path[len(path)-1]]
-	if _, ok := v.(map[string]any); ok {
-		return nil
-	}
-
-	return v
 }

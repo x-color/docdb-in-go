@@ -152,6 +152,136 @@ func TestParseQuery(t *testing.T) {
 	}
 }
 
+func TestQuery_Match(t *testing.T) {
+	type args struct {
+		doc map[string]any
+	}
+	tests := []struct {
+		name string
+		q    query
+		args args
+		want bool
+	}{
+		{
+			name: "Simple Query 'a.b:hello'",
+			q: query{
+				Keys:  []string{"a", "b"},
+				Value: "hello",
+				Op:    OpeEq,
+			},
+			args: args{
+				doc: map[string]any{
+					"a": map[string]any{
+						"b": "hello",
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "Simple Query 'a.b:hello' (Not Matching)",
+			q: query{
+				Keys:  []string{"a", "b"},
+				Value: "hello",
+				Op:    OpeEq,
+			},
+			args: args{
+				doc: map[string]any{
+					"a": map[string]any{
+						"b": "1",
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "Simple Query 'a.b:hello' (Key Does Not Exists)",
+			q: query{
+				Keys:  []string{"a", "b"},
+				Value: "hello",
+				Op:    OpeEq,
+			},
+			args: args{
+				doc: map[string]any{
+					"a": 1,
+				},
+			},
+			want: false,
+		},
+		{
+			name: "Simple Query 'a.b:>1'",
+			q: query{
+				Keys:  []string{"a", "b"},
+				Value: "1",
+				Op:    OpeGt,
+			},
+			args: args{
+				doc: map[string]any{
+					"a": map[string]any{
+						"b": 2,
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "Simple Query 'a.b:>1' (Not Matching)",
+			q: query{
+				Keys:  []string{"a", "b"},
+				Value: "1",
+				Op:    OpeGt,
+			},
+			args: args{
+				doc: map[string]any{
+					"a": map[string]any{
+						"b": 1,
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "Simple Query 'a.b:<1'",
+			q: query{
+				Keys:  []string{"a", "b"},
+				Value: "1",
+				Op:    OpeLt,
+			},
+			args: args{
+				doc: map[string]any{
+					"a": map[string]any{
+						"b": 0.0,
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "Simple Query 'a.b:<1' (Not Matching)",
+			q: query{
+				Keys:  []string{"a", "b"},
+				Value: "1",
+				Op:    OpeLt,
+			},
+			args: args{
+				doc: map[string]any{
+					"a": map[string]any{
+						"b": 3,
+					},
+				},
+			},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.q.Match(tt.args.doc); got != tt.want {
+				t.Errorf("query.Match() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestQueries_Match(t *testing.T) {
 	type args struct {
 		doc map[string]any
