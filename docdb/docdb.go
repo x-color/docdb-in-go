@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -18,26 +19,6 @@ var (
 	ErrNotFound = errors.New("not found error")
 )
 
-type DocDBError struct {
-	typ error
-	msg string
-}
-
-func (e DocDBError) Error() string {
-	return e.msg
-}
-
-func (e DocDBError) Is(target error) bool {
-	return e.typ == target
-}
-
-func wrapError(typ error, msg string) error {
-	return DocDBError{
-		typ: typ,
-		msg: msg,
-	}
-}
-
 type DocDB struct {
 	db      *cache.Cache
 	indexDb *cache.Cache
@@ -47,7 +28,8 @@ func (d DocDB) Add(doc map[string]any) (string, error) {
 	id := uuid.New().String()
 	b, err := json.Marshal(doc)
 	if err != nil {
-		return "", wrapError(ErrFatal, fmt.Sprintf("failed to convert document to byte data: %s", err))
+		log.Printf("failed to convert document to byte data: %s\n", err)
+		return "", ErrFatal
 	}
 
 	d.db.Set(id, b, 0)
@@ -59,15 +41,18 @@ func (d DocDB) Add(doc map[string]any) (string, error) {
 func (d DocDB) Get(id string) (map[string]any, error) {
 	item, ok := d.db.Get(id)
 	if !ok {
-		return nil, wrapError(ErrNotFound, fmt.Sprintf("not found document by %s", id))
+		log.Printf("not found document by %s", id)
+		return nil, ErrNotFound
 	}
 	b, ok := item.([]byte)
 	if !ok {
-		return nil, wrapError(ErrFatal, fmt.Sprintf("unexpected data in %s", id))
+		log.Printf("unexpected data in %s", id)
+		return nil, ErrFatal
 	}
 	doc := make(map[string]any)
 	if err := json.Unmarshal(b, &doc); err != nil {
-		return nil, wrapError(ErrFatal, fmt.Sprintf("failed to convert data to document: %s", err))
+		log.Printf("failed to convert data to document: %s", err)
+		return nil, ErrFatal
 	}
 
 	return doc, nil
@@ -79,7 +64,8 @@ func (d DocDB) Search(qs query.Queries) ([]map[string]any, error) {
 		if q.Op == query.OpeEq {
 			ids, err := d.lookup(fmt.Sprintf("%s=%s", strings.Join(q.Keys, "."), q.Value))
 			if err != nil {
-				return nil, wrapError(ErrFatal, fmt.Sprintf("failed to get data from index: %v", q))
+				log.Printf("failed to get data from index: %v", q)
+				return nil, ErrFatal
 			}
 			for _, id := range ids {
 				matchId[id]++
@@ -87,7 +73,8 @@ func (d DocDB) Search(qs query.Queries) ([]map[string]any, error) {
 		} else {
 			ids, err := d.lookup(strings.Join(q.Keys, "."))
 			if err != nil {
-				return nil, wrapError(ErrFatal, fmt.Sprintf("failed to get data from index: %v", q))
+				log.Printf("failed to get data from index: %v", q)
+				return nil, ErrFatal
 			}
 			for _, id := range ids {
 				matchId[id]++
@@ -102,7 +89,8 @@ func (d DocDB) Search(qs query.Queries) ([]map[string]any, error) {
 		}
 		doc, err := d.Get(id)
 		if err != nil {
-			return nil, wrapError(ErrFatal, fmt.Sprintf("failed to get doc from main: %s", id))
+			log.Printf("failed to get doc from main: %s", id)
+			return nil, ErrFatal
 		}
 		if qs.Match(doc) {
 			match = append(match, map[string]any{
@@ -130,6 +118,7 @@ func (d DocDB) setIndex(id string, keys []string) {
 		}
 		ids, ok := v.(string)
 		if !ok {
+			log.Printf("failed to add index: %s", id)
 			continue
 		}
 
@@ -147,7 +136,8 @@ func (d DocDB) lookup(pv string) ([]string, error) {
 	}
 	s, ok := b.(string)
 	if !ok {
-		return nil, wrapError(ErrFatal, fmt.Sprintf("failed to convert data in indexDB to string: %v", pv))
+		log.Printf("failed to convert data in indexDB to string: %v", pv)
+		return nil, ErrFatal
 	}
 	return strings.Split(s, ","), nil
 }
