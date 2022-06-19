@@ -207,21 +207,25 @@ func TestServer_SearchDocumentHandler(t *testing.T) {
 					"greeting": "hello",
 					"num":      2,
 				},
+				{
+					"greeting": "hi",
+					"num":      3,
+				},
 			},
-			q:        "greeting:hello",
+			q:        "num:>1",
 			wantCode: http.StatusOK,
 			wantRes: map[string]any{
 				"documents": []any{
 					map[string]any{
 						"document": map[string]any{
 							"greeting": "hello",
-							"num":      float64(1),
+							"num":      float64(2),
 						},
 					},
 					map[string]any{
 						"document": map[string]any{
-							"greeting": "hello",
-							"num":      float64(2),
+							"greeting": "hi",
+							"num":      float64(3),
 						},
 					},
 				},
