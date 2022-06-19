@@ -73,18 +73,38 @@ func (d DocDB) Get(id string) (map[string]any, error) {
 	return doc, nil
 }
 
-func (d DocDB) Search(q query.Queries) ([]map[string]any, error) {
+func (d DocDB) Search(qs query.Queries) ([]map[string]any, error) {
+	matchId := make(map[string]int)
+	for _, q := range qs {
+		if q.Op == query.OpeEq {
+			ids, err := d.lookup(fmt.Sprintf("%s=%s", strings.Join(q.Keys, "."), q.Value))
+			if err != nil {
+				return nil, wrapError(ErrFatal, fmt.Sprintf("failed to get data from index: %v", q))
+			}
+			for _, id := range ids {
+				matchId[id]++
+			}
+		} else {
+			ids, err := d.lookup(strings.Join(q.Keys, "."))
+			if err != nil {
+				return nil, wrapError(ErrFatal, fmt.Sprintf("failed to get data from index: %v", q))
+			}
+			for _, id := range ids {
+				matchId[id]++
+			}
+		}
+	}
+
 	match := make([]map[string]any, 0)
-	for id, item := range d.db.Items() {
-		b, ok := item.Object.([]byte)
-		if !ok {
-			return nil, wrapError(ErrFatal, fmt.Sprintf("unexpected data in %s", id))
+	for id, count := range matchId {
+		if count != len(qs) {
+			continue
 		}
-		doc := make(map[string]any)
-		if err := json.Unmarshal(b, &doc); err != nil {
-			return nil, wrapError(ErrFatal, fmt.Sprintf("failed to convert data to document: %s", err))
+		doc, err := d.Get(id)
+		if err != nil {
+			return nil, wrapError(ErrFatal, fmt.Sprintf("failed to get doc from main: %s", id))
 		}
-		if q.Match(doc) {
+		if qs.Match(doc) {
 			match = append(match, map[string]any{
 				"id":       id,
 				"document": doc,
@@ -96,9 +116,16 @@ func (d DocDB) Search(q query.Queries) ([]map[string]any, error) {
 
 func (d DocDB) index(id string, doc map[string]any) {
 	pvs := getPathValues(doc, "")
-	for _, pv := range pvs {
-		v, ok := d.indexDb.Get(pv)
+	d.setIndex(id, pvs)
+	ps := getPath(doc, "")
+	d.setIndex(id, ps)
+}
+
+func (d DocDB) setIndex(id string, keys []string) {
+	for _, key := range keys {
+		v, ok := d.indexDb.Get(key)
 		if !ok {
+			d.indexDb.Set(key, id, 0)
 			continue
 		}
 		ids, ok := v.(string)
@@ -108,9 +135,41 @@ func (d DocDB) index(id string, doc map[string]any) {
 
 		if !strings.Contains(id, ids) {
 			ids = fmt.Sprintf("%s,%s", ids, id)
-			d.indexDb.Set(pv, []byte(ids), 0)
+			d.indexDb.Set(key, ids, 0)
 		}
 	}
+}
+
+func (d DocDB) lookup(pv string) ([]string, error) {
+	b, ok := d.indexDb.Get(pv)
+	if !ok {
+		return nil, nil
+	}
+	s, ok := b.(string)
+	if !ok {
+		return nil, wrapError(ErrFatal, fmt.Sprintf("failed to convert data in indexDB to string: %v", pv))
+	}
+	return strings.Split(s, ","), nil
+}
+
+func getPath(obj map[string]any, prefix string) []string {
+	var path []string
+	for k, v := range obj {
+		if prefix != "" {
+			k = prefix + "." + k
+		}
+		switch t := v.(type) {
+		case map[string]any:
+			path = append(path, getPath(t, k)...)
+			continue
+		case []any:
+			continue
+		}
+
+		path = append(path, k)
+	}
+
+	return path
 }
 
 func getPathValues(obj map[string]any, prefix string) []string {
